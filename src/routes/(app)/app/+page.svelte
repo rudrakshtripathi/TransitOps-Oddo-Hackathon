@@ -170,7 +170,7 @@
 			<div class="py-16 text-center text-sm text-muted-foreground bg-muted/10 border rounded-xl">
 				Loading...
 			</div>
-		{#/snippet}
+		{/snippet}
 
 		{#snippet failed(error: any, reset: any)}
 			<div class="py-16 text-center text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl space-y-2">
