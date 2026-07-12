@@ -7,16 +7,14 @@ import type { User } from "$lib/types"
 /**
  * Gets the user profile associated with a user ID
  */
-export async function getUserById(id: string): Promise<{ data: User | null; error: null } | { data: null; error: string }> {
+export async function getUserById(
+  id: string,
+): Promise<{ data: User | null; error: null } | { data: null; error: string }> {
   const TAG = `DB: getUserById(${id})`
   console.time(TAG)
 
   try {
-    const [userProfile] = await db
-      .select()
-      .from(s.users)
-      .where(eq(s.users.id, id))
-      .limit(1)
+    const [userProfile] = await db.select().from(s.users).where(eq(s.users.id, id)).limit(1)
 
     return { data: userProfile || null, error: null }
   } catch (e) {
@@ -36,11 +34,7 @@ export async function getUserByEmail(
   console.time(TAG)
 
   try {
-    const [userProfile] = await db
-      .select()
-      .from(s.users)
-      .where(eq(s.users.email, email))
-      .limit(1)
+    const [userProfile] = await db.select().from(s.users).where(eq(s.users.email, email)).limit(1)
 
     return { data: userProfile || null, error: null }
   } catch (e) {
