@@ -1,4 +1,0 @@
-(C) fix login page design
-x 2026-07-12 2026-07-12 add login and signup form actions
-x 2026-07-12 2026-07-12 remote functions for everything
-2026-07-12 merge satyam changes
