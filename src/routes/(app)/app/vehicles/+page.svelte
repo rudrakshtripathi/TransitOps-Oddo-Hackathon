@@ -6,12 +6,14 @@ import { Input } from "$lib/components/ui/input"
 import { Label } from "$lib/components/ui/label"
 import { NativeSelect } from "$lib/components/ui/native-select"
 import * as Dialog from "$lib/components/ui/dialog"
-import { VEHICLES_DATA, BADGE_STYLES, BADGE_LABELS, type BadgeVariant } from "$lib/data"
+import { getVehicles, createVehicle, updateVehicle, deleteVehicle } from "$lib/api/vehicles.remote"
+import { BADGE_STYLES, BADGE_LABELS, type BadgeVariant } from "$lib/data"
 
 let { data } = $props()
 let { session } = $derived(data)
 
-let vehicles = $state(VEHICLES_DATA.map((v) => ({ ...v })))
+let vehiclesPromise = $state(getVehicles())
+
 let search = $state("")
 let filterType = $state("all")
 let filterStatus = $state("all")
@@ -28,23 +30,9 @@ const emptyForm = {
   capacity: "15",
   status: "active",
   fuel: "Diesel",
+  mileage: "0",
 }
 let form = $state({ ...emptyForm })
-
-const filtered = $derived(
-  vehicles.filter((v) => {
-    const q = search.toLowerCase()
-    const matchSearch =
-      !q ||
-      v.plate.toLowerCase().includes(q) ||
-      v.make.toLowerCase().includes(q) ||
-      v.model.toLowerCase().includes(q) ||
-      v.driver.toLowerCase().includes(q)
-    const matchType = filterType === "all" || v.type === filterType
-    const matchStatus = filterStatus === "all" || v.status === filterStatus
-    return matchSearch && matchType && matchStatus
-  }),
-)
 
 const canEdit = $derived(!!session)
 
@@ -54,47 +42,67 @@ function openAdd() {
   modalOpen = true
 }
 
-function openEdit(v: (typeof VEHICLES_DATA)[0]) {
+function openEdit(v: any) {
   editId = v.id
+  const parts = v.name.split(" ")
+  const make = parts[0] || ""
+  const model = parts.slice(1).join(" ") || ""
   form = {
-    plate: v.plate,
-    make: v.make,
-    model: v.model,
-    year: String(v.year),
+    plate: v.registrationNumber,
+    make,
+    model,
+    year: "2024",
     type: v.type,
-    capacity: String(v.capacity),
+    capacity: String(v.maxLoadCapacity),
     status: v.status,
-    fuel: v.fuel,
+    fuel: "Diesel",
+    mileage: String(v.odometer),
   }
   modalOpen = true
 }
 
-function handleSave() {
+async function handleSave() {
   if (!form.plate || !form.make || !form.model) return
-  if (editId) {
-    vehicles = vehicles.map((v) =>
-      v.id === editId ? { ...v, ...form, year: Number(form.year), capacity: Number(form.capacity) } : v,
-    )
-  } else {
-    vehicles = [
-      {
-        ...form,
-        id: `V${String(vehicles.length + 1).padStart(3, "0")}`,
-        year: Number(form.year),
-        capacity: Number(form.capacity),
-        driver: "—",
-        mileage: 0,
-        lastService: "—",
-      },
-      ...vehicles,
-    ]
+
+  const payload = {
+    registrationNumber: form.plate,
+    name: `${form.make} ${form.model}`,
+    type: form.type,
+    maxLoadCapacity: form.capacity,
+    status: form.status as any,
+    acquisitionCost: "1500000",
+    odometer: form.mileage,
   }
+
+  if (editId) {
+    await updateVehicle({ id: editId, vehicle: payload })
+  } else {
+    await createVehicle(payload)
+  }
+
+  // Refresh the data promise
+  vehiclesPromise = getVehicles()
   modalOpen = false
 }
 
-function handleDelete(id: string) {
-  vehicles = vehicles.filter((v) => v.id !== id)
+async function handleDelete(id: string) {
+  await deleteVehicle(id)
+  vehiclesPromise = getVehicles()
   deleteId = null
+}
+
+function filterVehicles(list: any[]) {
+  return list.filter((v) => {
+    const q = search.toLowerCase()
+    const matchSearch =
+      !q ||
+      v.registrationNumber.toLowerCase().includes(q) ||
+      v.name.toLowerCase().includes(q) ||
+      v.type.toLowerCase().includes(q)
+    const matchType = filterType === "all" || v.type === filterType
+    const matchStatus = filterStatus === "all" || v.status === filterStatus
+    return matchSearch && matchType && matchStatus
+  })
 }
 </script>
 
@@ -102,7 +110,7 @@ function handleDelete(id: string) {
   <div class="flex items-start justify-between mb-6 gap-4">
     <div>
       <h1 class="text-xl font-bold font-outfit text-foreground">Vehicle Fleet</h1>
-      <p class="text-sm text-muted-foreground mt-0.5">{vehicles.length} registered vehicles</p>
+      <p class="text-sm text-muted-foreground mt-0.5">Manage registered vehicles</p>
     </div>
     {#if canEdit}
       <Button variant="default" size="sm" onclick={openAdd}><Plus class="size-3.5 mr-1" /> Add Vehicle</Button>
@@ -128,65 +136,90 @@ function handleDelete(id: string) {
     <Button variant="ghost" size="sm"><Download class="size-3 mr-1" /> Export</Button>
   </div>
 
-  <div class="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-border bg-muted/40">
-            {#each ["ID", "Plate", "Vehicle", "Type", "Status", "Driver", "Mileage", "Last Service", ""] as h (h)}
-              <th
-                class="text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-4 py-3 whitespace-nowrap"
-                >{h}</th>
-            {/each}
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-border">
-          {#if filtered.length === 0}
-            <tr
-              ><td colspan="9" class="py-16 text-center text-sm text-muted-foreground"
-                >No vehicles match your filters</td
-              ></tr>
-          {:else}
-            {#each filtered as v (v.id)}
-              <tr class="hover:bg-muted/30 transition-colors">
-                <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{v.id}</td>
-                <td class="px-4 py-3 font-mono text-xs font-medium text-foreground">{v.plate}</td>
-                <td class="px-4 py-3">
-                  <div class="font-medium text-foreground text-xs">{v.make} {v.model}</div>
-                  <div class="text-[10px] text-muted-foreground">{v.year} · {v.fuel}</div>
-                </td>
-                <td class="px-4 py-3 text-xs text-muted-foreground">{v.type}</td>
-                <td class="px-4 py-3">
-                  <Badge variant="outline" class={BADGE_STYLES[v.status as BadgeVariant]}>
-                    {BADGE_LABELS[v.status as BadgeVariant]}
-                  </Badge>
-                </td>
-                <td class="px-4 py-3 text-xs text-foreground">{v.driver}</td>
-                <td class="px-4 py-3 text-xs font-mono text-foreground">{v.mileage.toLocaleString()} km</td>
-                <td class="px-4 py-3 text-xs font-mono text-muted-foreground">{v.lastService}</td>
-                <td class="px-4 py-3">
-                  {#if canEdit}
-                    <div class="flex items-center gap-1 justify-end">
-                      <Button variant="ghost" size="icon" class="size-7" onclick={() => openEdit(v)}
-                        ><Edit2 class="size-3.5" /></Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="size-7 text-destructive hover:bg-destructive/10"
-                        onclick={() => (deleteId = v.id)}><Trash2 class="size-3.5" /></Button>
-                    </div>
-                  {/if}
-                </td>
-              </tr>
-            {/each}
-          {/if}
-        </tbody>
-      </table>
-    </div>
-    <div class="px-4 py-2.5 border-t border-border text-xs text-muted-foreground font-mono">
-      Showing {filtered.length} of {vehicles.length} vehicles
-    </div>
-  </div>
+  <svelte:boundary>
+    {#await vehiclesPromise}
+      <div class="py-16 text-center text-sm text-muted-foreground bg-muted/10 border rounded-xl">
+        Loading vehicles from database...
+      </div>
+    {:then res}
+      {#if res.error}
+        <div class="py-16 text-center text-sm text-destructive bg-destructive/10 border rounded-xl">
+          Error loading vehicles: {res.error}
+        </div>
+      {:else if res.data}
+        {@const filtered = filterVehicles(res.data)}
+        <div class="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-border bg-muted/40">
+                  {#each ["ID", "Plate", "Vehicle", "Type", "Status", "Mileage", ""] as h (h)}
+                    <th
+                      class="text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-4 py-3 whitespace-nowrap"
+                      >{h}</th>
+                  {/each}
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                {#if filtered.length === 0}
+                  <tr
+                    ><td colspan="7" class="py-16 text-center text-sm text-muted-foreground"
+                      >No vehicles match your filters</td
+                    ></tr>
+                {:else}
+                  {#each filtered as v (v.id)}
+                    <tr class="hover:bg-muted/30 transition-colors">
+                      <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{v.id.slice(0, 8)}</td>
+                      <td class="px-4 py-3 font-mono text-xs font-medium text-foreground">{v.registrationNumber}</td>
+                      <td class="px-4 py-3">
+                        <div class="font-medium text-foreground text-xs">{v.name}</div>
+                      </td>
+                      <td class="px-4 py-3 text-xs text-muted-foreground">{v.type}</td>
+                      <td class="px-4 py-3">
+                        <Badge variant="outline" class={BADGE_STYLES[v.status as BadgeVariant]}>
+                          {BADGE_LABELS[v.status as BadgeVariant]}
+                        </Badge>
+                      </td>
+                      <td class="px-4 py-3 text-xs font-mono text-foreground"
+                        >{Number(v.odometer).toLocaleString()} km</td>
+                      <td class="px-4 py-3">
+                        {#if canEdit}
+                          <div class="flex items-center gap-1 justify-end">
+                            <Button variant="ghost" size="icon" class="size-7" onclick={() => openEdit(v)}
+                              ><Edit2 class="size-3.5" /></Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              class="size-7 text-destructive hover:bg-destructive/10"
+                              onclick={() => (deleteId = v.id)}><Trash2 class="size-3.5" /></Button>
+                          </div>
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                {/if}
+              </tbody>
+            </table>
+          </div>
+          <div class="px-4 py-2.5 border-t border-border text-xs text-muted-foreground font-mono">
+            Showing {filtered.length} of {res.data.length} vehicles
+          </div>
+        </div>
+      {/if}
+    {/await}
+
+    {#snippet pending()}
+      <div class="py-16 text-center text-sm text-muted-foreground bg-muted/10 border rounded-xl">Loading...</div>
+    {/snippet}
+
+    {#snippet failed(error: any, reset: any)}
+      <div
+        class="py-16 text-center text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl space-y-2">
+        <p>Failed to load vehicles: {error?.message || error}</p>
+        <Button variant="outline" size="sm" onclick={reset}>Retry</Button>
+      </div>
+    {/snippet}
+  </svelte:boundary>
 
   <!-- Add / Edit Modal -->
   <Dialog.Root bind:open={modalOpen}>
@@ -201,8 +234,8 @@ function handleDelete(id: string) {
             <Input id="plate" bind:value={form.plate} placeholder="KAA 123A" />
           </div>
           <div class="space-y-1.5">
-            <Label for="year" class="text-xs">Year</Label>
-            <Input id="year" type="number" bind:value={form.year} />
+            <Label for="mileage" class="text-xs">Odometer (km)</Label>
+            <Input id="mileage" type="number" bind:value={form.mileage} />
           </div>
           <div class="space-y-1.5">
             <Label for="make" class="text-xs">Make *</Label>
@@ -225,16 +258,7 @@ function handleDelete(id: string) {
             <Label for="capacity" class="text-xs">Capacity (seats)</Label>
             <Input id="capacity" type="number" bind:value={form.capacity} />
           </div>
-          <div class="space-y-1.5">
-            <Label for="fuel" class="text-xs">Fuel Type</Label>
-            <NativeSelect id="fuel" bind:value={form.fuel} class="w-full">
-              <option value="Diesel">Diesel</option>
-              <option value="Petrol">Petrol</option>
-              <option value="Electric">Electric</option>
-              <option value="Hybrid">Hybrid</option>
-            </NativeSelect>
-          </div>
-          <div class="space-y-1.5">
+          <div class="space-y-1.5 col-span-2">
             <Label for="status" class="text-xs">Status</Label>
             <NativeSelect id="status" bind:value={form.status} class="w-full">
               <option value="active">Active</option>
