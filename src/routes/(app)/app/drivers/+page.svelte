@@ -6,12 +6,15 @@ import { Input } from "$lib/components/ui/input"
 import { Label } from "$lib/components/ui/label"
 import { NativeSelect } from "$lib/components/ui/native-select"
 import * as Dialog from "$lib/components/ui/dialog"
-import { DRIVERS_DATA, BADGE_STYLES, BADGE_LABELS, type BadgeVariant } from "$lib/data"
+import { getDrivers, createDriver, updateDriver, deleteDriver } from "$lib/api/drivers.remote"
+import { BADGE_STYLES, BADGE_LABELS, type BadgeVariant } from "$lib/data"
 
 let { data } = $props()
 let { session } = $derived(data)
 
-let drivers = $state(DRIVERS_DATA.map((d) => ({ ...d })))
+// Load data reactively via Svelte 5 promise state
+let driversPromise = $state(getDrivers())
+
 let search = $state("")
 let filterStatus = $state("all")
 let modalOpen = $state(false)
@@ -21,16 +24,6 @@ let deleteId = $state<string | null>(null)
 const emptyForm = { name: "", email: "", phone: "", license: "", licenseClass: "C", status: "active" }
 let form = $state({ ...emptyForm })
 
-const filtered = $derived(
-  drivers.filter((d) => {
-    const q = search.toLowerCase()
-    const matchSearch =
-      !q || d.name.toLowerCase().includes(q) || d.email.toLowerCase().includes(q) || d.license.toLowerCase().includes(q)
-    const matchStatus = filterStatus === "all" || d.status === filterStatus
-    return matchSearch && matchStatus
-  }),
-)
-
 const canEdit = $derived(!!session)
 
 function openAdd() {
@@ -39,43 +32,59 @@ function openAdd() {
   modalOpen = true
 }
 
-function openEdit(d: (typeof DRIVERS_DATA)[0]) {
+function openEdit(d: any) {
   editId = d.id
   form = {
     name: d.name,
-    email: d.email,
-    phone: d.phone,
-    license: d.license,
-    licenseClass: d.licenseClass,
+    email: d.email || `${d.name.split(" ")[0].toLowerCase()}@transitops.co`,
+    phone: d.contactNumber,
+    license: d.licenseNumber,
+    licenseClass: d.licenseCategory,
     status: d.status,
   }
   modalOpen = true
 }
 
-function handleSave() {
-  if (!form.name || !form.email) return
-  if (editId) {
-    drivers = drivers.map((d) => (d.id === editId ? { ...d, ...form } : d))
-  } else {
-    drivers = [
-      {
-        ...form,
-        id: `D${String(drivers.length + 1).padStart(3, "0")}`,
-        joined: new Date().toISOString().slice(0, 10),
-        trips: 0,
-        rating: 5.0,
-        vehicle: "—",
-        experience: 0,
-      },
-      ...drivers,
-    ]
+async function handleSave() {
+  if (!form.name || !form.phone || !form.license) return
+
+  const payload = {
+    name: form.name,
+    licenseNumber: form.license,
+    licenseCategory: form.licenseClass,
+    licenseExpiryDate: new Date("2029-12-31").toISOString(),
+    contactNumber: form.phone,
+    safetyScore: 100,
+    status: form.status as any,
   }
+
+  if (editId) {
+    await updateDriver({ id: editId, driver: payload })
+  } else {
+    await createDriver(payload)
+  }
+
+  driversPromise = getDrivers()
   modalOpen = false
 }
 
-function handleDelete(id: string) {
-  drivers = drivers.filter((d) => d.id !== id)
+async function handleDelete(id: string) {
+  await deleteDriver(id)
+  driversPromise = getDrivers()
   deleteId = null
+}
+
+function filterDrivers(list: any[]) {
+  return list.filter((d) => {
+    const q = search.toLowerCase()
+    const matchSearch =
+      !q ||
+      d.name.toLowerCase().includes(q) ||
+      d.licenseNumber.toLowerCase().includes(q) ||
+      d.contactNumber.toLowerCase().includes(q)
+    const matchStatus = filterStatus === "all" || d.status === filterStatus
+    return matchSearch && matchStatus
+  })
 }
 </script>
 
@@ -83,7 +92,7 @@ function handleDelete(id: string) {
   <div class="flex items-start justify-between mb-6 gap-4">
     <div>
       <h1 class="text-xl font-bold font-outfit text-foreground">Driver Registry</h1>
-      <p class="text-sm text-muted-foreground mt-0.5">{drivers.length} registered drivers</p>
+      <p class="text-sm text-muted-foreground mt-0.5">Manage registered drivers</p>
     </div>
     {#if canEdit}
       <Button variant="default" size="sm" onclick={openAdd}><Plus class="size-3.5 mr-1" /> Add Driver</Button>
@@ -105,73 +114,104 @@ function handleDelete(id: string) {
     <Button variant="ghost" size="sm"><Download class="size-3 mr-1" /> Export</Button>
   </div>
 
-  <div class="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-border bg-muted/40">
-            {#each ["Driver", "License", "Class", "Contact", "Status", "Vehicle", "Trips", "Rating", ""] as h (h)}
-              <th
-                class="text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-4 py-3 whitespace-nowrap"
-                >{h}</th>
-            {/each}
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-border">
-          {#each filtered as d (d.id)}
-            <tr class="hover:bg-muted/30 transition-colors">
-              <td class="px-4 py-3">
-                <div class="flex items-center gap-2.5">
-                  <div class="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
-                    <User size={12} class="text-primary" />
-                  </div>
-                  <div>
-                    <div class="text-xs font-medium text-foreground">{d.name}</div>
-                    <div class="text-[10px] text-muted-foreground">{d.experience}y exp</div>
-                  </div>
-                </div>
-              </td>
-              <td class="px-4 py-3 text-xs font-mono text-muted-foreground">{d.license}</td>
-              <td class="px-4 py-3 text-xs font-mono font-medium text-foreground">{d.licenseClass}</td>
-              <td class="px-4 py-3">
-                <div class="text-xs text-foreground">{d.phone}</div>
-                <div class="text-[10px] text-muted-foreground">{d.email}</div>
-              </td>
-              <td class="px-4 py-3">
-                <Badge variant="outline" class={BADGE_STYLES[d.status as BadgeVariant]}>
-                  {BADGE_LABELS[d.status as BadgeVariant]}
-                </Badge>
-              </td>
-              <td class="px-4 py-3 text-xs font-mono text-foreground">{d.vehicle}</td>
-              <td class="px-4 py-3 text-xs font-mono text-foreground">{d.trips.toLocaleString()}</td>
-              <td class="px-4 py-3">
-                <div class="flex items-center gap-1 text-xs">
-                  <Star size={10} class="text-amber-400 fill-amber-400" />
-                  <span class="font-mono text-foreground">{d.rating}</span>
-                </div>
-              </td>
-              <td class="px-4 py-3 text-right">
-                {#if canEdit}
-                  <div class="flex items-center gap-1 justify-end">
-                    <Button variant="ghost" size="icon" class="size-7" onclick={() => openEdit(d)}
-                      ><Edit2 class="size-3.5" /></Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="size-7 text-destructive hover:bg-destructive/10"
-                      onclick={() => (deleteId = d.id)}><Trash2 class="size-3.5" /></Button>
-                  </div>
+  <svelte:boundary>
+    {#await driversPromise}
+      <div class="py-16 text-center text-sm text-muted-foreground bg-muted/10 border rounded-xl">
+        Loading drivers from database...
+      </div>
+    {:then res}
+      {#if res.error}
+        <div class="py-16 text-center text-sm text-destructive bg-destructive/10 border rounded-xl">
+          Error loading drivers: {res.error}
+        </div>
+      {:else if res.data}
+        {@const filtered = filterDrivers(res.data)}
+        <div class="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-border bg-muted/40">
+                  {#each ["Driver", "License", "Class", "Contact", "Status", "Rating", ""] as h (h)}
+                    <th
+                      class="text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-4 py-3 whitespace-nowrap"
+                      >{h}</th>
+                  {/each}
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                {#if filtered.length === 0}
+                  <tr
+                    ><td colspan="7" class="py-16 text-center text-sm text-muted-foreground"
+                      >No drivers match your filters</td
+                    ></tr>
+                {:else}
+                  {#each filtered as d (d.id)}
+                    <tr class="hover:bg-muted/30 transition-colors">
+                      <td class="px-4 py-3">
+                        <div class="flex items-center gap-2.5">
+                          <div
+                            class="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+                            <User size={12} class="text-primary" />
+                          </div>
+                          <div>
+                            <div class="text-xs font-medium text-foreground">{d.name}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3 text-xs font-mono text-muted-foreground">{d.licenseNumber}</td>
+                      <td class="px-4 py-3 text-xs font-mono font-medium text-foreground">{d.licenseCategory}</td>
+                      <td class="px-4 py-3">
+                        <div class="text-xs text-foreground">{d.contactNumber}</div>
+                      </td>
+                      <td class="px-4 py-3">
+                        <Badge variant="outline" class={BADGE_STYLES[d.status as BadgeVariant]}>
+                          {BADGE_LABELS[d.status as BadgeVariant]}
+                        </Badge>
+                      </td>
+                      <td class="px-4 py-3">
+                        <div class="flex items-center gap-1 text-xs">
+                          <Star size={10} class="text-amber-400 fill-amber-400" />
+                          <span class="font-mono text-foreground">{((d.safetyScore || 100) / 20).toFixed(1)}</span>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3 text-right">
+                        {#if canEdit}
+                          <div class="flex items-center gap-1 justify-end">
+                            <Button variant="ghost" size="icon" class="size-7" onclick={() => openEdit(d)}
+                              ><Edit2 class="size-3.5" /></Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              class="size-7 text-destructive hover:bg-destructive/10"
+                              onclick={() => (deleteId = d.id)}><Trash2 class="size-3.5" /></Button>
+                          </div>
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
                 {/if}
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-    <div class="px-4 py-2.5 border-t border-border text-xs text-muted-foreground font-mono">
-      Showing {filtered.length} of {drivers.length} drivers
-    </div>
-  </div>
+              </tbody>
+            </table>
+          </div>
+          <div class="px-4 py-2.5 border-t border-border text-xs text-muted-foreground font-mono">
+            Showing {filtered.length} of {res.data.length} drivers
+          </div>
+        </div>
+      {/if}
+    {/await}
+
+    {#snippet pending()}
+      <div class="py-16 text-center text-sm text-muted-foreground bg-muted/10 border rounded-xl">Loading...</div>
+    {/snippet}
+
+    {#snippet failed(error: any, reset: any)}
+      <div
+        class="py-16 text-center text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl space-y-2">
+        <p>Failed to load drivers: {error?.message || error}</p>
+        <Button variant="outline" size="sm" onclick={reset}>Retry</Button>
+      </div>
+    {/snippet}
+  </svelte:boundary>
 
   <!-- Add / Edit Modal -->
   <Dialog.Root bind:open={modalOpen}>
@@ -192,15 +232,11 @@ function handleDelete(id: string) {
             </NativeSelect>
           </div>
           <div class="space-y-1.5">
-            <Label for="email" class="text-xs">Email *</Label>
-            <Input id="email" type="email" bind:value={form.email} placeholder="driver@transitops.co" />
-          </div>
-          <div class="space-y-1.5">
-            <Label for="phone" class="text-xs">Phone</Label>
+            <Label for="phone" class="text-xs">Phone *</Label>
             <Input id="phone" bind:value={form.phone} placeholder="+254 7XX XXX XXX" />
           </div>
           <div class="space-y-1.5">
-            <Label for="license" class="text-xs">License No.</Label>
+            <Label for="license" class="text-xs">License No. *</Label>
             <Input id="license" bind:value={form.license} placeholder="DL-2024-0001" />
           </div>
           <div class="space-y-1.5">
