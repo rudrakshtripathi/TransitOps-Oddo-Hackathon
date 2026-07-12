@@ -5,7 +5,7 @@
 
 	import { Toaster } from '$lib/components/ui/sonner';
 
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '$lib/assets/favicon.png';
 	import { SUPABASE_AUTH_TAG } from '$lib/constants';
 
 	import { ModeWatcher } from 'mode-watcher';
