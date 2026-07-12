@@ -10,7 +10,7 @@ import { Eye, EyeOff, RefreshCw, AlertCircle } from "@lucide/svelte"
 import { toast } from "svelte-sonner"
 import { UserRole } from "$lib/constants"
 
-import type { ActionData } from "../../../routes/(unauthenticated)/auth/$types"
+import type { ActionData } from "../../../routes/auth/$types"
 
 interface Props {
   form: ActionData
@@ -148,12 +148,12 @@ const roleOptions = Object.entries(UserRole).map(([key, value]) => ({
     </div>
   </div>
 
-  {#if form?.message}
+  {#if form?.error}
     <Alert.Root variant="destructive" class="py-2 px-3 text-xs">
       <div class="flex items-center gap-2">
         <AlertCircle class="size-4 shrink-0" />
         <Alert.Description class="text-xs font-medium">
-          {form?.message}
+          {form?.error}
         </Alert.Description>
       </div>
     </Alert.Root>

@@ -2,12 +2,12 @@ import * as s from "$lib/db/schema"
 import { UserRole } from "$lib/constants"
 import { db, handleDbError } from "./common"
 import { eq } from "drizzle-orm"
-import type { User } from "$lib/types"
+import type { DbUser } from "$lib/types"
 
 /**
  * Gets the user profile associated with a user ID
  */
-export async function getUserById(id: string): Promise<{ data: User | null; error: null } | { data: null; error: string }> {
+export async function getUserById(id: string): Promise<{ data: DbUser | null; error: null } | { data: null; error: string }> {
   const TAG = `DB: getUserById(${id})`
   console.time(TAG)
 
@@ -31,7 +31,7 @@ export async function getUserById(id: string): Promise<{ data: User | null; erro
  */
 export async function getUserByEmail(
   email: string,
-): Promise<{ data: User | null; error: null } | { data: null; error: string }> {
+): Promise<{ data: DbUser | null; error: null } | { data: null; error: string }> {
   const TAG = `DB: getUserByEmail(${email})`
   console.time(TAG)
 
@@ -57,7 +57,7 @@ export async function createUser(
   id: string,
   email: string,
   role: UserRole,
-): Promise<{ data: User; error: null } | { data: null; error: string }> {
+): Promise<{ data: DbUser; error: null } | { data: null; error: string }> {
   const TAG = `DB: createUser(${email})`
   console.time(TAG)
 
