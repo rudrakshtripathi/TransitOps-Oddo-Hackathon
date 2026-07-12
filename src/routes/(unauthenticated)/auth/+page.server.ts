@@ -1,27 +1,10 @@
 import { error, fail, redirect } from "@sveltejs/kit"
-
-import { UserRole } from "$lib/types"
-
-import { getUserByEmail as getUserByEmailDb } from "@/lib/server/db/user"
+import { UserRole } from "$lib/constants"
+import { getUserByEmail as getUserByEmailDb, createUser as createUserDb } from "$lib/server/db/user"
 import * as v from "valibot"
-
 import type { Actions } from "./$types"
 
 export const actions: Actions = {
-  signup: async ({ request, locals: { supabase } }) => {
-    const formData = await request.formData()
-    const email = formData.get("email") as string
-    const password = formData.get("password") as string
-
-    const { error } = await supabase.auth.signUp({ email, password })
-    if (error) {
-      console.error(error)
-      redirect(303, "/auth/error")
-    } else {
-      redirect(303, "/")
-    }
-  },
-
   login: async ({ request, locals: { supabase }, url }) => {
     console.time("LOGIN")
 
@@ -45,18 +28,18 @@ export const actions: Actions = {
 
     const { email, password } = data
 
-    // check user role first, SHOULD be ACTIVE ADMIn
+    // Check if the user profile exists in public database
     const potentialUser = await getUserByEmailDb(email)
-    if (potentialUser.error || !potentialUser.data) {
+    if (potentialUser.error) {
       console.error("Error Fetching User By Email: ", potentialUser.error)
       console.timeEnd("LOGIN")
-      return fail(500, { email, message: "Internal Server Error", error: true })
+      return fail(500, { email, message: "Database lookup failed", error: true })
     }
 
-    if (potentialUser.data.role !== UserRole.ADMIN || potentialUser.data.status !== UserStatus.ACTIVE) {
-      console.error("User is not active admin")
+    if (!potentialUser.data) {
+      console.error("User not found in public database")
       console.timeEnd("LOGIN")
-      error(403, "Employees or Revoked Admins cannot login to Admin Dashboard")
+      return fail(401, { email, message: "User profile not found. Please sign up first.", error: true })
     }
 
     console.debug(`Performing supabase signInWithPassword ${email}`)
@@ -71,30 +54,90 @@ export const actions: Actions = {
       console.timeEnd("LOGIN")
       return fail(401, {
         email: email,
-        message: authError?.message || "An error occurred",
+        message: authError?.message || "Invalid credentials",
         error: true,
       })
     }
 
-    // Defensive Check
-    if (
-      loggedInUser.app_metadata.app_role !== UserRole.ADMIN ||
-      loggedInUser.app_metadata.app_status !== UserStatus.ACTIVE
-    ) {
-      await supabase.auth.signOut()
-
-      console.error("User is not active admin")
-      console.timeEnd("LOGIN")
-      error(403, "Employees or Revoked Admins cannot login to Admin Dashboard")
-    }
-
-    if (url.searchParams.has("redirectTo")) {
-      console.log("Redirecting to ", url.searchParams.get("redirectTo"))
-      console.timeEnd("LOGIN")
-      redirect(303, url.searchParams.get("redirectTo") ?? "/admin")
-    }
-
+    const redirectTo = url.searchParams.get("redirectTo") || "/app"
+    console.log("Redirecting to ", redirectTo)
     console.timeEnd("LOGIN")
-    redirect(303, "/admin")
+    redirect(303, redirectTo)
+  },
+
+  signup: async ({ request, locals: { supabase } }) => {
+    console.time("SIGNUP")
+
+    const schema = v.object({
+      email: v.pipe(v.string(), v.email("Email is not valid")),
+      password: v.pipe(v.string(), v.minLength(8, "Password must be at least 8 characters long")),
+      role: v.enum_(UserRole, "Please select a valid role"),
+    })
+
+    const signupData = Object.fromEntries(await request.formData())
+    const { output: data, issues: parseError, success } = v.safeParse(schema, signupData)
+
+    if (!success) {
+      console.debug("Invalid Signup Data:", parseError)
+      console.timeEnd("SIGNUP")
+      return fail(400, {
+        email: signupData.email,
+        message: parseError[0].message,
+        error: true,
+      })
+    }
+
+    const { email, password, role } = data
+
+    // Check if the user already exists in public database to avoid duplications
+    const existingUser = await getUserByEmailDb(email)
+    if (existingUser.error) {
+      console.timeEnd("SIGNUP")
+      return fail(500, { email, message: "Database lookup failed", error: true })
+    }
+    if (existingUser.data) {
+      console.timeEnd("SIGNUP")
+      return fail(400, { email, message: "User with this email already exists", error: true })
+    }
+
+    console.debug(`Performing supabase signUp ${email}`)
+
+    const {
+      error: authError,
+      data: { user: signedUpUser },
+    } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          role: role,
+        },
+      },
+    })
+
+    if (authError || !signedUpUser) {
+      console.debug(authError)
+      console.timeEnd("SIGNUP")
+      return fail(400, {
+        email: email,
+        message: authError?.message || "Failed to create account",
+        error: true,
+      })
+    }
+
+    // Insert user into public database users table
+    const dbInsert = await createUserDb(signedUpUser.id, email, role)
+    if (dbInsert.error) {
+      console.error("Failed to insert user profile in database:", dbInsert.error)
+      console.timeEnd("SIGNUP")
+      return fail(500, {
+        email: email,
+        message: "Account was created, but initializing user profile failed.",
+        error: true,
+      })
+    }
+
+    console.timeEnd("SIGNUP")
+    redirect(303, "/app")
   },
 }
