@@ -13,14 +13,20 @@
 	import { getExpenses } from '$lib/api/fuel.remote';
 	import { VEHICLE_PIE, BADGE_STYLES, BADGE_LABELS, type BadgeVariant } from '$lib/data';
 
-	// Load all dashboard metrics reactively
-	let dashboardPromise = $state(Promise.all([
-		getVehicles(),
-		getDrivers(),
-		getTrips(),
-		getMaintenanceLogs(),
-		getExpenses()
-	]));
+	// Load all dashboard metrics independently so one failure doesn't block the rest
+	const vehiclesPromise = getVehicles().catch(() => ({ data: [], error: 'Failed to load vehicles' }));
+	const driversPromise = getDrivers().catch(() => ({ data: [], error: 'Failed to load drivers' }));
+	const tripsPromise = getTrips().catch(() => ({ data: [], error: 'Failed to load trips' }));
+	const logsPromise = getMaintenanceLogs().catch(() => ({ data: [], error: 'Failed to load maintenance' }));
+	const expensesPromise = getExpenses().catch(() => ({ data: [], error: 'Failed to load expenses' }));
+
+	let dashboardPromise = Promise.all([
+		vehiclesPromise,
+		driversPromise,
+		tripsPromise,
+		logsPromise,
+		expensesPromise,
+	]);
 </script>
 
 <div class="space-y-6">
@@ -30,16 +36,11 @@
 				Loading dashboard metrics...
 			</div>
 		{:then [vehiclesRes, driversRes, tripsRes, logsRes, expensesRes]}
-			{#if vehiclesRes.error || driversRes.error || tripsRes.error || logsRes.error || expensesRes.error}
-				<div class="py-16 text-center text-sm text-destructive bg-destructive/10 border rounded-xl">
-					Error loading dashboard data
-				</div>
-			{:else}
-				{@const vehicles = vehiclesRes.data || []}
-				{@const drivers = driversRes.data || []}
-				{@const trips = tripsRes.data || []}
-				{@const logs = logsRes.data || []}
-				{@const expenses = expensesRes.data || []}
+			{@const vehicles = vehiclesRes.data || []}
+			{@const drivers = driversRes.data || []}
+			{@const trips = tripsRes.data || []}
+			{@const logs = logsRes.data || []}
+			{@const expenses = expensesRes.data || []}
 
 				{@const activeVehicles = vehicles.filter(v => v.status === 'active' || v.status === 'idle').length}
 				{@const idleVehicles = vehicles.filter(v => v.status === 'idle').length}
@@ -163,7 +164,6 @@
 						</div>
 					</div>
 				{/if}
-			{/if}
 		{/await}
 
 		{#snippet pending()}
