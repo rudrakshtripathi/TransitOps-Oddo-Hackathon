@@ -33,6 +33,7 @@
 		"clsx": "^2.1.1",
 		"drizzle-kit": "^0.31.10",
 		"drizzle-orm": "^0.45.2",
+		"layerchart": "^2.0.1",
 		"postgres": "^3.4.9",
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^4.1.0",
