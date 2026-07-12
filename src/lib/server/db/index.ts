@@ -7,5 +7,5 @@ import postgres from "postgres"
 
 if (!DATABASE_URL) throw new Error("DATABASE_URL is not set")
 
-const client = postgres(DATABASE_URL, { prepare: false })
+const client = postgres(DATABASE_URL, { max: 1, prepare: false })
 export const db = drizzle(client, { schema })
