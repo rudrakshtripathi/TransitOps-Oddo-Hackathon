@@ -2,7 +2,7 @@ import * as s from "$lib/db/schema"
 import { UserRole } from "$lib/constants"
 import { db, handleDbError } from "./common"
 import { eq } from "drizzle-orm"
-import type { User } from "$lib/types"
+import type { DbUser as User } from "$lib/types"
 
 /**
  * Gets the user profile associated with a user ID

@@ -12,7 +12,9 @@ export default defineConfig({
         runes: ({ filename }) => (filename.split(/[/\\]/).includes("node_modules") ? undefined : true),
         experimental: { async: true },
       },
-      adapter: adapter(),
+      adapter: adapter({
+        runtime: "experimental_bun1.x",
+      }),
       experimental: { remoteFunctions: true, handleRenderingErrors: true },
       typescript: {
         config: (config) => {
