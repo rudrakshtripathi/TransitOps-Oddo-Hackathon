@@ -24,7 +24,19 @@ export async function getVehiclesDb(): Promise<{ data: any[] | null; error: null
   const TAG = "DB: getVehiclesDb"
   console.time(TAG)
   try {
-    const data = await db.select().from(s.vehicles).orderBy(s.vehicles.createdAt)
+    const data = await db
+      .select({
+        id: s.vehicles.id,
+        registrationNumber: s.vehicles.registrationNumber,
+        name: s.vehicles.name,
+        type: s.vehicles.type,
+        maxLoadCapacity: s.vehicles.maxLoadCapacity,
+        odometer: s.vehicles.odometer,
+        acquisitionCost: s.vehicles.acquisitionCost,
+        status: s.vehicles.status,
+      })
+      .from(s.vehicles)
+      .orderBy(s.vehicles.createdAt)
 
     const mappedData = data.map((v) => ({
       ...v,

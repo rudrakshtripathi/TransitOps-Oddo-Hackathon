@@ -1,5 +1,5 @@
 import * as s from "$lib/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { db, handleDbError } from "./common"
 
 export type Expense = typeof s.expenses.$inferSelect
@@ -17,8 +17,8 @@ export async function getExpensesDb(): Promise<{ data: any[] | null; error: null
         type: s.expenses.type,
         cost: s.expenses.cost,
         liters: s.expenses.liters,
-        date: s.expenses.date,
-        createdAt: s.expenses.createdAt,
+        date: sql<string>`${s.expenses.date}::text`,
+        createdAt: sql<string>`${s.expenses.createdAt}::text`,
       })
       .from(s.expenses)
       .innerJoin(s.vehicles, eq(s.expenses.vehicleId, s.vehicles.id))

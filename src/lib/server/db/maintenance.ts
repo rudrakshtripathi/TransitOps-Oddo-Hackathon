@@ -1,5 +1,5 @@
 import * as s from "$lib/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { db, handleDbError } from "./common"
 
 export type MaintenanceLog = typeof s.maintenanceLogs.$inferSelect
@@ -19,8 +19,8 @@ export async function getMaintenanceLogsDb(): Promise<
         description: s.maintenanceLogs.description,
         status: s.maintenanceLogs.status,
         cost: s.maintenanceLogs.cost,
-        dateLogged: s.maintenanceLogs.dateLogged,
-        createdAt: s.maintenanceLogs.createdAt,
+        dateLogged: sql<string>`${s.maintenanceLogs.dateLogged}::text`,
+        createdAt: sql<string>`${s.maintenanceLogs.createdAt}::text`,
       })
       .from(s.maintenanceLogs)
       .innerJoin(s.vehicles, eq(s.maintenanceLogs.vehicleId, s.vehicles.id))

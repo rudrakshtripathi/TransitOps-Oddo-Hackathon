@@ -1,6 +1,6 @@
 import { TripStatus } from "$lib/constants"
 import * as s from "$lib/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { db, handleDbError } from "./common"
 
 export type Trip = typeof s.trips.$inferSelect
@@ -34,7 +34,7 @@ export async function getTripsDb(): Promise<{ data: any[] | null; error: null } 
         driverName: s.drivers.name,
         plannedDistance: s.trips.plannedDistance,
         status: s.trips.status,
-        createdAt: s.trips.createdAt,
+        createdAt: sql<string>`${s.trips.createdAt}::text`,
       })
       .from(s.trips)
       .innerJoin(s.vehicles, eq(s.trips.vehicleId, s.vehicles.id))
