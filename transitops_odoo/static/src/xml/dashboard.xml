@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="transitops.Dashboard">
+        <div class="o_action o_transitops_dashboard">
+            <t t-if="state.loading">
+                <div class="d-flex justify-content-center align-items-center" style="height:200px">
+                    <i class="fa fa-spinner fa-spin fa-3x text-primary"/>
+                </div>
+            </t>
+            <t t-elif="state.error">
+                <div class="alert alert-danger m-3">
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    Failed to load dashboard: <t t-esc="state.error"/>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="container-fluid p-4">
+                    <h2 class="mb-4 fw-bold">TransitOps Dashboard</h2>
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-md-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <i class="fa fa-truck fa-2x text-success mb-2"/>
+                                    <h3 class="fw-bold text-success mb-1"><t t-esc="state.kpis.active_vehicles"/></h3>
+                                    <p class="text-muted small mb-0">Active Vehicles</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <i class="fa fa-wrench fa-2x text-warning mb-2"/>
+                                    <h3 class="fw-bold text-warning mb-1"><t t-esc="state.kpis.in_maintenance"/></h3>
+                                    <p class="text-muted small mb-0">In Maintenance</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <i class="fa fa-road fa-2x text-primary mb-2"/>
+                                    <h3 class="fw-bold text-primary mb-1"><t t-esc="state.kpis.active_trips"/></h3>
+                                    <p class="text-muted small mb-0">Active Trips</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <i class="fa fa-bar-chart fa-2x text-info mb-2"/>
+                                    <h3 class="fw-bold text-info mb-1"><t t-esc="state.kpis.utilization"/>%</h3>
+                                    <p class="text-muted small mb-0">Fleet Utilization</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

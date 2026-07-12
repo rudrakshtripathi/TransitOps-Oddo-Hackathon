@@ -6,12 +6,6 @@ export default defineConfig({
 	schema: './src/lib/db/schema.ts',
 	dialect: 'postgresql',
 	dbCredentials: { url: process.env.DATABASE_URL },
-	schemaFilter: ['public'],
-	entities: {
-		roles: {
-			provider: 'supabase'
-		}
-	},
 	verbose: true,
 	strict: true
 });
