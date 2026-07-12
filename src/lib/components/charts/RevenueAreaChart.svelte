@@ -1,15 +1,16 @@
 <script lang="ts">
 import { AreaChart } from "layerchart"
-import { MONTHLY_CHART } from "$lib/data"
+
+let { data }: { data: { month: string; fuel: number; maintenance: number }[] } = $props()
 </script>
 
 <div class="h-[200px] w-full">
   <AreaChart
-    data={MONTHLY_CHART}
+    {data}
     x="month"
     series={[
-      { key: "revenue", label: "Revenue", color: "#2563EB" },
       { key: "fuel", label: "Fuel Cost", color: "#F59E0B" },
+      { key: "maintenance", label: "Maintenance", color: "#EF4444" },
     ]}
     legend />
 </div>

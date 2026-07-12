@@ -11,14 +11,30 @@
 	import { getTrips } from '$lib/api/trips.remote';
 	import { getMaintenanceLogs } from '$lib/api/maintenance.remote';
 	import { getExpenses } from '$lib/api/fuel.remote';
-	import { VEHICLE_PIE, BADGE_STYLES, BADGE_LABELS, type BadgeVariant } from '$lib/data';
+	import {
+		getVehicleStatusCounts,
+		getMonthlyStats,
+		getWeeklyDistance,
+	} from '$lib/api/analytics.remote';
+	import { BADGE_STYLES, BADGE_LABELS, type BadgeVariant } from '$lib/data';
 
-	// Load all dashboard metrics independently so one failure doesn't block the rest
-	const vehiclesPromise = getVehicles().catch(() => ({ data: [], error: 'Failed to load vehicles' }));
-	const driversPromise = getDrivers().catch(() => ({ data: [], error: 'Failed to load drivers' }));
-	const tripsPromise = getTrips().catch(() => ({ data: [], error: 'Failed to load trips' }));
-	const logsPromise = getMaintenanceLogs().catch(() => ({ data: [], error: 'Failed to load maintenance' }));
-	const expensesPromise = getExpenses().catch(() => ({ data: [], error: 'Failed to load expenses' }));
+	const STATUS_COLORS: Record<string, string> = {
+		Active: '#22C55E',
+		'On Trip': '#3B82F6',
+		Maintenance: '#F59E0B',
+		Retired: '#6B7280',
+	};
+
+	// Load all dashboard data independently so one failure doesn't block the rest
+	const emptyResult = { data: [], error: 'Failed' };
+	const vehiclesPromise = getVehicles().catch(() => emptyResult);
+	const driversPromise = getDrivers().catch(() => emptyResult);
+	const tripsPromise = getTrips().catch(() => emptyResult);
+	const logsPromise = getMaintenanceLogs().catch(() => emptyResult);
+	const expensesPromise = getExpenses().catch(() => emptyResult);
+	const statusCountsPromise = getVehicleStatusCounts().catch(() => emptyResult);
+	const monthlyStatsPromise = getMonthlyStats().catch(() => emptyResult);
+	const weeklyDistPromise = getWeeklyDistance().catch(() => emptyResult);
 
 	let dashboardPromise = Promise.all([
 		vehiclesPromise,
@@ -26,6 +42,9 @@
 		tripsPromise,
 		logsPromise,
 		expensesPromise,
+		statusCountsPromise,
+		monthlyStatsPromise,
+		weeklyDistPromise,
 	]);
 </script>
 
@@ -35,23 +54,26 @@
 			<div class="py-16 text-center text-sm text-muted-foreground bg-muted/10 border rounded-xl">
 				Loading dashboard metrics...
 			</div>
-		{:then [vehiclesRes, driversRes, tripsRes, logsRes, expensesRes]}
+		{:then [vehiclesRes, driversRes, tripsRes, logsRes, expensesRes, statusCountsRes, monthlyRes, weeklyRes]}
 			{@const vehicles = vehiclesRes.data || []}
 			{@const drivers = driversRes.data || []}
 			{@const trips = tripsRes.data || []}
 			{@const logs = logsRes.data || []}
 			{@const expenses = expensesRes.data || []}
+			{@const statusCounts = (statusCountsRes.data || []).map((s: any) => ({ ...s, color: STATUS_COLORS[s.name] || '#6B7280' }))}
+			{@const monthlyStats = monthlyRes.data || []}
+			{@const weeklyDist = weeklyRes.data || []}
 
-				{@const activeVehicles = vehicles.filter(v => v.status === 'active' || v.status === 'idle').length}
-				{@const idleVehicles = vehicles.filter(v => v.status === 'idle').length}
-				{@const maintenanceVehicles = vehicles.filter(v => v.status === 'maintenance').length}
+			{@const activeVehicles = vehicles.filter(v => v.status === 'active' || v.status === 'idle').length}
+			{@const idleVehicles = vehicles.filter(v => v.status === 'idle').length}
+			{@const maintenanceVehicles = vehicles.filter(v => v.status === 'maintenance').length}
 
-				{@const activeDrivers = drivers.filter(d => d.status === 'active').length}
-				{@const leaveDrivers = drivers.filter(d => d.status === 'on_leave').length}
-				{@const inactiveDrivers = drivers.filter(d => d.status === 'inactive').length}
+			{@const activeDrivers = drivers.filter(d => d.status === 'active').length}
+			{@const leaveDrivers = drivers.filter(d => d.status === 'on_leave').length}
+			{@const inactiveDrivers = drivers.filter(d => d.status === 'inactive').length}
 
-				{@const totalSpend = expenses.reduce((s, e) => s + Number(e.cost), 0)}
-				{@const alerts = logs.filter((m) => m.status !== 'completed' && (m.description.includes('high') || m.description.includes('critical') || m.description.includes('overdue')))}
+			{@const totalSpend = expenses.reduce((s, e) => s + Number(e.cost), 0)}
+			{@const alerts = logs.filter((m) => m.status !== 'completed' && (m.description.includes('high') || m.description.includes('critical') || m.description.includes('overdue')))}
 
 				<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 					<StatCard
@@ -92,19 +114,19 @@
 					<div class="lg:col-span-2 bg-card border border-border rounded-xl p-5">
 						<div class="flex items-center justify-between mb-4">
 							<div>
-								<h3 class="text-sm font-semibold font-outfit text-card-foreground">Revenue & Fuel Cost</h3>
-								<p class="text-xs text-muted-foreground font-dm-mono">Aug 2025 — Jan 2026 (KES thousands)</p>
+								<h3 class="text-sm font-semibold font-outfit text-card-foreground">Fuel & Maintenance Cost</h3>
+								<p class="text-xs text-muted-foreground font-dm-mono">Last 6 months (KES)</p>
 							</div>
 							<Button variant="ghost" size="sm"><Download class="size-3 mr-1" /> Export</Button>
 						</div>
-						<RevenueAreaChart />
+						<RevenueAreaChart data={monthlyStats} />
 					</div>
 
 					<div class="bg-card border border-border rounded-xl p-5">
 						<h3 class="text-sm font-semibold font-outfit text-card-foreground mb-4">Fleet Status</h3>
-						<FleetStatusPie />
+						<FleetStatusPie data={statusCounts} />
 						<div class="space-y-2 mt-2">
-							{#each VEHICLE_PIE as item (item.name)}
+							{#each statusCounts as item (item.name)}
 								<div class="flex items-center justify-between text-xs">
 									<div class="flex items-center gap-2">
 										<div class="w-2 h-2 rounded-full" style="background:{item.color}"></div>
@@ -120,7 +142,7 @@
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 					<div class="bg-card border border-border rounded-xl p-5">
 						<h3 class="text-sm font-semibold font-outfit text-card-foreground mb-4">Weekly Distance (km)</h3>
-						<WeeklyDistanceBar />
+						<WeeklyDistanceBar data={weeklyDist} />
 					</div>
 
 					<div class="bg-card border border-border rounded-xl p-5">
