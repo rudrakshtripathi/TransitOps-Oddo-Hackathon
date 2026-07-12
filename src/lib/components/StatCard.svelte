@@ -1,52 +1,34 @@
 <script lang="ts">
-import { ArrowUpRight, ArrowDownRight, type Icon as IconType } from "@lucide/svelte"
-import { cn } from "$lib/utils"
-import { fly } from "svelte/transition"
+	import type { Component } from 'svelte';
+	let { label, value, sub, trend, icon: Icon, color = 'bg-primary' }: {
+		label: string;
+		value: string | number;
+		sub?: string;
+		trend?: number;
+		icon?: Component<any>;
+		color?: string;
+	} = $props();
 
-let {
-  label,
-  value,
-  sub,
-  trend,
-  icon: Icon,
-  color,
-}: {
-  label: string
-  value: string
-  sub?: string
-  trend?: number
-  icon: typeof IconType
-  color: string
-} = $props()
-
-const isPositive = $derived((trend ?? 0) >= 0)
+	const isPositive = $derived(trend !== undefined && trend > 0);
 </script>
 
-<div class="bg-card border border-border rounded-xl p-5 flex flex-col gap-3" in:fly={{ y: 12, duration: 200 }}>
-  <div class="flex items-center justify-between">
-    <span class="text-xs font-medium text-muted-foreground uppercase tracking-widest">{label}</span>
-    <div class={cn("w-9 h-9 rounded-lg flex items-center justify-center", color)}>
-      <Icon size={16} class="text-white" />
-    </div>
-  </div>
-  <div>
-    <div class="text-2xl font-bold font-outfit text-card-foreground">{value}</div>
-    {#if sub}
-      <div class="text-xs text-muted-foreground mt-0.5 font-dm-mono">{sub}</div>
-    {/if}
-  </div>
-  {#if trend !== undefined}
-    <div
-      class={cn(
-        "flex items-center gap-1 text-xs font-dm-mono",
-        isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-500",
-      )}>
-      {#if isPositive}
-        <ArrowUpRight size={12} />
-      {:else}
-        <ArrowDownRight size={12} />
-      {/if}
-      {Math.abs(trend)}% vs last month
-    </div>
-  {/if}
+<div class="bg-card border border-border rounded-xl p-4 flex items-start gap-4">
+	{#if Icon}
+		<div class="{color} p-2.5 rounded-xl shrink-0">
+			<Icon size={18} class="text-white" />
+		</div>
+	{/if}
+	<div class="flex-1 min-w-0">
+		<p class="text-xs text-muted-foreground mb-0.5">{label}</p>
+		<p class="text-xl font-bold text-foreground font-mono">{value}</p>
+		{#if sub || trend !== undefined}
+			<p class="text-[11px] text-muted-foreground mt-0.5">
+				{#if trend !== undefined}
+					<span class="{isPositive ? 'text-emerald-500' : 'text-red-400'}">{isPositive ? '+' : ''}{trend}%</span>
+					{#if sub} · {/if}
+				{/if}
+				{#if sub}{sub}{/if}
+			</p>
+		{/if}
+	</div>
 </div>
