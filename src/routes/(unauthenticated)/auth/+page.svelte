@@ -1,5 +1,14 @@
 <script lang="ts">
-	import { Truck, Navigation, BarChart3, Shield, Eye, EyeOff, RefreshCw, AlertCircle } from 'lucide-svelte';
+	import {
+		Truck,
+		Navigation,
+		BarChart3,
+		Shield,
+		Eye,
+		EyeOff,
+		RefreshCw,
+		AlertCircle
+	} from '@lucide/svelte';
 	import type { Role } from '$lib/data';
 	import { cn } from '$lib/utils';
 	import { fly } from 'svelte/transition';
