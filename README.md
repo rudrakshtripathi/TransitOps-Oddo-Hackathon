@@ -48,17 +48,21 @@ The platform enables organizations to manage:
 ## 🛠️ Tech Stack
 
 **Frontend**
+
 - React.js
 - Tailwind CSS
 
 **Backend**
+
 - Node.js
 - Express.js
 
 **Database**
+
 - MongoDB
 
 **Authentication**
+
 - JWT Authentication
 
 ---
@@ -85,7 +89,6 @@ TransitOps/
 git clone <repository-url>
 cd TransitOps
 ```
-
 
 ## 📋 Core Modules
 
