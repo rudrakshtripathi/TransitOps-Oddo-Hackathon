@@ -1,9 +1,15 @@
+import { MaintenanceLogStatus } from "$lib/constants"
 import * as s from "$lib/db/schema"
 import { eq, sql } from "drizzle-orm"
 import { db, handleDbError } from "./common"
 
 export type MaintenanceLog = typeof s.maintenanceLogs.$inferSelect
 export type NewMaintenanceLog = typeof s.maintenanceLogs.$inferInsert
+
+export function mapUiToDbStatus(status: string): MaintenanceLogStatus {
+  if (status === "completed") return MaintenanceLogStatus.CLOSED
+  return MaintenanceLogStatus.OPEN
+}
 
 export async function getMaintenanceLogsDb(): Promise<
   { data: any[] | null; error: null } | { data: null; error: string }
@@ -46,7 +52,11 @@ export async function createMaintenanceLogDb(
   const TAG = "DB: createMaintenanceLogDb"
   console.time(TAG)
   try {
-    const [data] = await db.insert(s.maintenanceLogs).values(log).returning()
+    const payload = {
+      ...log,
+      status: mapUiToDbStatus(log.status as string),
+    }
+    const [data] = await db.insert(s.maintenanceLogs).values(payload).returning()
     return { data, error: null }
   } catch (e) {
     return handleDbError(e)
@@ -62,7 +72,11 @@ export async function updateMaintenanceLogDb(
   const TAG = `DB: updateMaintenanceLogDb(${id})`
   console.time(TAG)
   try {
-    const [data] = await db.update(s.maintenanceLogs).set(log).where(eq(s.maintenanceLogs.id, id)).returning()
+    const payload = {
+      ...log,
+      status: log.status ? mapUiToDbStatus(log.status as string) : undefined,
+    }
+    const [data] = await db.update(s.maintenanceLogs).set(payload).where(eq(s.maintenanceLogs.id, id)).returning()
     return { data: data || null, error: null }
   } catch (e) {
     return handleDbError(e)
