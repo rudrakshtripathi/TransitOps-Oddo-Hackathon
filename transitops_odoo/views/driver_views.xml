@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_driver_tree" model="ir.ui.view">
+        <field name="name">transitops.driver.tree</field>
+        <field name="model">transitops.driver</field>
+        <field name="arch" type="xml">
+            <tree string="Drivers">
+                <field name="name"/>
+                <field name="license_number"/>
+                <field name="license_category"/>
+                <field name="license_expiry"
+                       decoration-danger="license_expiry and license_expiry &lt; current_date"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'available'"
+                       decoration-warning="state == 'on_trip'"
+                       decoration-secondary="state == 'off_duty'"
+                       decoration-danger="state == 'suspended'"/>
+                <field name="safety_score"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_driver_form" model="ir.ui.view">
+        <field name="name">transitops.driver.form</field>
+        <field name="model">transitops.driver</field>
+        <field name="arch" type="xml">
+            <form string="Driver">
+                <header>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="available,on_trip,off_duty,suspended"
+                           clickable="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Driver Name"/></h1>
+                    </div>
+                    <group>
+                        <group string="License Details">
+                            <field name="license_number"/>
+                            <field name="license_category"/>
+                            <field name="license_expiry"
+                                   decoration-danger="license_expiry and license_expiry &lt; current_date"/>
+                        </group>
+                        <group string="Status">
+                            <field name="contact"/>
+                            <field name="safety_score"/>
+                            <field name="state"/>
+                            <field name="user_id"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_driver_kanban" model="ir.ui.view">
+        <field name="name">transitops.driver.kanban</field>
+        <field name="model">transitops.driver</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="state"/>
+                <field name="safety_score"/>
+                <field name="license_expiry"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card oe_kanban_global_click">
+                            <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="name"/>
+                                    </strong>
+                                </div>
+                                <span t-attf-class="badge rounded-pill
+                                    #{record.state.raw_value == 'available' ? 'text-bg-success' :
+                                      record.state.raw_value == 'on_trip' ? 'text-bg-warning' :
+                                      record.state.raw_value == 'suspended' ? 'text-bg-danger' : 'text-bg-secondary'}">
+                                    <field name="state"/>
+                                </span>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <div><i class="fa fa-star"/> Safety: <field name="safety_score"/></div>
+                                <div><i class="fa fa-calendar"/> Expiry: <field name="license_expiry"/></div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_driver_search" model="ir.ui.view">
+        <field name="name">transitops.driver.search</field>
+        <field name="model">transitops.driver</field>
+        <field name="arch" type="xml">
+            <search string="Search Drivers">
+                <field name="name"/>
+                <field name="license_number"/>
+                <filter string="Available" name="filter_available"
+                        domain="[('state','=','available')]"/>
+                <filter string="Suspended" name="filter_suspended"
+                        domain="[('state','=','suspended')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_state"
+                            context="{'group_by':'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

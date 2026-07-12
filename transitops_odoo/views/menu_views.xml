@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_vehicles" model="ir.actions.act_window">
+        <field name="name">Vehicles</field>
+        <field name="res_model">transitops.vehicle</field>
+        <field name="view_mode">tree,form,kanban</field>
+    </record>
+
+    <record id="action_drivers" model="ir.actions.act_window">
+        <field name="name">Drivers</field>
+        <field name="res_model">transitops.driver</field>
+        <field name="view_mode">tree,form,kanban</field>
+    </record>
+
+    <record id="action_trips" model="ir.actions.act_window">
+        <field name="name">Trips</field>
+        <field name="res_model">transitops.trip</field>
+        <field name="view_mode">tree,form,kanban</field>
+    </record>
+
+    <record id="action_maintenance" model="ir.actions.act_window">
+        <field name="name">Maintenance</field>
+        <field name="res_model">transitops.maintenance</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_fuel_logs" model="ir.actions.act_window">
+        <field name="name">Fuel Logs</field>
+        <field name="res_model">transitops.fuel.log</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_dashboard" model="ir.actions.client">
+        <field name="name">TransitOps Dashboard</field>
+        <field name="tag">transitops.dashboard_action</field>
+    </record>
+
+    <menuitem id="menu_transitops_root" name="TransitOps"
+              web_icon="fa fa-truck,#2ECC71" sequence="100"/>
+
+    <menuitem id="menu_transitops_dashboard" name="Dashboard"
+              parent="menu_transitops_root" action="action_dashboard" sequence="1"/>
+
+    <menuitem id="menu_transitops_operations" name="Operations"
+              parent="menu_transitops_root" sequence="2"/>
+    <menuitem id="menu_transitops_trips" name="Trips"
+              parent="menu_transitops_operations" action="action_trips" sequence="1"/>
+    <menuitem id="menu_transitops_dispatch" name="Dispatch"
+              parent="menu_transitops_operations" action="action_trips" sequence="2"/>
+
+    <menuitem id="menu_transitops_fleet" name="Fleet"
+              parent="menu_transitops_root" sequence="3"/>
+    <menuitem id="menu_transitops_vehicles" name="Vehicles"
+              parent="menu_transitops_fleet" action="action_vehicles" sequence="1"/>
+    <menuitem id="menu_transitops_maintenance" name="Maintenance"
+              parent="menu_transitops_fleet" action="action_maintenance" sequence="2"/>
+    <menuitem id="menu_transitops_fuel_logs" name="Fuel Logs"
+              parent="menu_transitops_fleet" action="action_fuel_logs" sequence="3"/>
+
+    <menuitem id="menu_transitops_hr" name="HR"
+              parent="menu_transitops_root" sequence="4"/>
+    <menuitem id="menu_transitops_drivers" name="Drivers"
+              parent="menu_transitops_hr" action="action_drivers" sequence="1"/>
+
+    <menuitem id="menu_transitops_reporting" name="Reporting"
+              parent="menu_transitops_root" sequence="5"/>
+    <menuitem id="menu_transitops_analytics" name="Analytics"
+              parent="menu_transitops_reporting" action="action_trips" sequence="1"/>
+
+</odoo>
