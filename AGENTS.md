@@ -7,6 +7,7 @@
 - Deconstruct `$props()` immediately for clarity: `let { data, form } = $props();`
 - Keep effects (`$effect`) minimal. Prefer derived state (`$derived`) for computed values to prevent infinite render loops.
 - UI state that doesn't trigger reactivity should remain standard let/const variables.
+- Make use of remote functions
 
 ## 2. Drizzle ORM (Database)
 
@@ -14,7 +15,15 @@
   reduce boilerplate. Use the query builder API (`db.select().from()`) for complex aggregations or specific filtering.
 - **Mutations:** Always use explicit `returning()` calls if the UI requires immediate update after `insert`, `update`,
   or `delete`.
-- **Schema Management:** Keep schema definitions in `src/lib/server/db/schema.ts`. Use strict TypeScript types provided
-  by Drizzle (`InferSelectModel`, `InferInsertModel`).
+- **Schema Management:** Keep schema definitions in `src/lib/db/schema.ts`. Use strict TypeScript types provided
+  by Drizzle (`InferSelectModel`, `InferInsertModel`) `src/lib/types.ts`.
 - **Edge Deployment:** Ensure database connections utilize Supabase connection pooling (port 6543) to prevent connection
   exhaustion on Vercel Edge functions.
+
+## 3. UI
+
+- Use shadcn-svelte UI components in `src/lib/components/ui`
+
+## 4. Package Manager
+
+- Always use `bun`
